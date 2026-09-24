@@ -1,0 +1,1048 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="An animated classroom demonstration of a hidden-bucket Bayes' rule example.">
+  <title>Bayes' Rule: Hidden Bucket</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2315273b'/%3E%3Ccircle cx='23' cy='31' r='11' fill='%23df4747'/%3E%3Ccircle cx='41' cy='31' r='11' fill='%232a9d68'/%3E%3C/svg%3E">
+  <style>
+    :root {
+      --ink: #15273b;
+      --muted: #607086;
+      --paper: #f4f7fb;
+      --surface: #ffffff;
+      --line: #cbd5e1;
+      --red: #df4747;
+      --red-dark: #b72f36;
+      --green: #2a9d68;
+      --green-dark: #18764a;
+      --gold: #f0b94f;
+      --shadow: 0 18px 45px rgba(21, 39, 59, 0.13);
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body { min-height: 100%; }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 10% 8%, rgba(42, 157, 104, 0.10), transparent 26rem),
+        radial-gradient(circle at 92% 12%, rgba(223, 71, 71, 0.10), transparent 24rem),
+        var(--paper);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    button { font: inherit; }
+
+    .page {
+      width: min(1180px, calc(100% - 32px));
+      min-height: 100vh;
+      margin: 0 auto;
+      padding: 24px 0 18px;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      gap: 18px;
+    }
+
+    header {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: start;
+      gap: 20px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(2rem, 4vw, 3.35rem);
+      line-height: 1.04;
+      letter-spacing: -0.045em;
+    }
+
+    .intro {
+      max-width: 760px;
+      margin: 10px 0 0;
+      color: var(--muted);
+      font-size: clamp(1rem, 1.7vw, 1.22rem);
+      line-height: 1.5;
+    }
+
+    .icon-button {
+      min-width: 46px;
+      height: 46px;
+      padding: 0 14px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      color: var(--ink);
+      background: rgba(255,255,255,0.82);
+      cursor: pointer;
+      transition: transform 150ms ease, border-color 150ms ease, background 150ms ease;
+    }
+
+    .icon-button:hover { transform: translateY(-1px); border-color: #94a3b8; background: #fff; }
+    .icon-button:focus-visible, .button:focus-visible { outline: 4px solid rgba(240, 185, 79, 0.55); outline-offset: 3px; }
+
+    main {
+      min-height: 0;
+      display: grid;
+      grid-template-rows: auto auto auto;
+      gap: 16px;
+    }
+
+    .stage {
+      position: relative;
+      min-height: 475px;
+      overflow: hidden;
+      border: 1px solid rgba(148, 163, 184, 0.55);
+      border-radius: 28px;
+      background: rgba(255,255,255,0.92);
+      box-shadow: var(--shadow);
+    }
+
+    .stage::before {
+      content: "";
+      position: absolute;
+      inset: auto 0 0;
+      height: 31%;
+      background: linear-gradient(180deg, rgba(226, 232, 240, 0), rgba(226, 232, 240, 0.62));
+      pointer-events: none;
+    }
+
+    .status {
+      position: absolute;
+      z-index: 16;
+      top: 22px;
+      left: 50%;
+      width: min(720px, calc(100% - 40px));
+      transform: translateX(-50%);
+      text-align: center;
+    }
+
+    .status-line {
+      min-height: 33px;
+      margin: 0;
+      font-size: clamp(1.05rem, 2vw, 1.38rem);
+      font-weight: 750;
+      line-height: 1.4;
+    }
+
+    .fair-choice {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      margin-top: 7px;
+      padding: 6px 12px;
+      border-radius: 999px;
+      color: #42546a;
+      background: #edf2f7;
+      font-size: 0.94rem;
+      font-weight: 650;
+    }
+
+    .fair-choice::before {
+      content: "";
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--gold);
+      box-shadow: 0 0 0 4px rgba(240, 185, 79, 0.2);
+    }
+
+    .buckets {
+      position: absolute;
+      inset: 94px 42px 38px;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: clamp(34px, 8vw, 110px);
+      align-items: end;
+    }
+
+    .bucket-card {
+      position: relative;
+      height: 320px;
+      display: grid;
+      grid-template-rows: auto 1fr;
+      justify-items: center;
+      transition: opacity 350ms ease, filter 350ms ease, transform 350ms ease;
+    }
+
+    .bucket-label {
+      position: relative;
+      z-index: 3;
+      margin: 0 0 10px;
+      font-size: clamp(1.35rem, 3vw, 2rem);
+      font-weight: 850;
+      letter-spacing: -0.02em;
+    }
+
+    .bucket-label small {
+      display: block;
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 0.88rem;
+      font-weight: 650;
+      letter-spacing: 0;
+    }
+
+    .probability-tags {
+      position: absolute;
+      z-index: 6;
+      top: 76px;
+      left: 4px;
+      right: 4px;
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      pointer-events: none;
+    }
+
+    .probability-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 7px 10px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: rgba(255,255,255,0.94);
+      box-shadow: 0 7px 16px rgba(21,39,59,0.10);
+      font-size: clamp(0.78rem, 1.2vw, 0.94rem);
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .probability-tag::before {
+      content: "";
+      width: 11px;
+      height: 11px;
+      flex: 0 0 11px;
+      border-radius: 50%;
+      box-shadow: inset -2px -2px 3px rgba(0,0,0,0.18);
+    }
+
+    .probability-tag.red-tag::before { background: var(--red); }
+    .probability-tag.green-tag::before { background: var(--green); }
+
+    .bucket {
+      position: relative;
+      width: min(285px, 92%);
+      height: 225px;
+      align-self: end;
+      filter: drop-shadow(0 18px 18px rgba(21, 39, 59, 0.14));
+    }
+
+    .bucket-body {
+      position: absolute;
+      inset: 20px 17px 0;
+      clip-path: polygon(4% 0, 96% 0, 84% 100%, 16% 100%);
+      border: 4px solid #718096;
+      border-top: 0;
+      background: linear-gradient(180deg, rgba(226,232,240,0.54), rgba(203,213,225,0.88));
+    }
+
+    .bucket-rim {
+      position: absolute;
+      z-index: 4;
+      top: 5px;
+      left: 4px;
+      width: calc(100% - 8px);
+      height: 37px;
+      border: 5px solid #607086;
+      border-radius: 50%;
+      background: #eef2f6;
+      box-shadow: inset 0 -8px 0 rgba(96,112,134,0.13);
+    }
+
+    .balls {
+      position: absolute;
+      z-index: 3;
+      left: 50%;
+      bottom: 23px;
+      width: 205px;
+      height: 150px;
+      transform: translateX(-50%);
+    }
+
+    .ball {
+      --x: 0px;
+      --y: 0px;
+      position: absolute;
+      width: 58px;
+      height: 58px;
+      border-radius: 50%;
+      border: 3px solid rgba(255,255,255,0.82);
+      box-shadow: inset -10px -12px 16px rgba(0,0,0,0.17), 0 8px 11px rgba(21,39,59,0.18);
+      transition: transform 500ms cubic-bezier(.2,.8,.2,1);
+    }
+
+    .ball::after {
+      content: "";
+      position: absolute;
+      top: 10px;
+      left: 13px;
+      width: 15px;
+      height: 10px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.55);
+      transform: rotate(-28deg);
+    }
+
+    .red { background: radial-gradient(circle at 34% 28%, #fb7474, var(--red) 55%, var(--red-dark)); }
+    .green { background: radial-gradient(circle at 34% 28%, #63cc91, var(--green) 55%, var(--green-dark)); }
+
+    .p1 { left: 9px; bottom: 8px; }
+    .p2 { left: 72px; bottom: 2px; }
+    .p3 { left: 136px; bottom: 10px; }
+    .p4 { left: 41px; bottom: 63px; }
+    .p5 { left: 107px; bottom: 65px; }
+
+    .mixing .ball { animation: shuffle 190ms ease-in-out infinite alternate; animation-delay: var(--delay, 0ms); }
+
+    @keyframes shuffle {
+      from { transform: translate(calc(var(--x) * -0.55), calc(var(--y) * -0.45)) rotate(-8deg); }
+      to { transform: translate(var(--x), var(--y)) rotate(9deg); }
+    }
+
+    .privacy-screen {
+      position: absolute;
+      z-index: 13;
+      inset: 82px 28px 25px;
+      display: grid;
+      place-items: center;
+      border-radius: 24px;
+      color: #fff;
+      background:
+        linear-gradient(130deg, rgba(255,255,255,0.07), transparent 45%),
+        var(--ink);
+      box-shadow: 0 20px 38px rgba(21,39,59,0.23);
+      opacity: 0;
+      transform: translateY(-105%);
+      transition: transform 620ms cubic-bezier(.2,.75,.2,1), opacity 250ms ease;
+    }
+
+    .privacy-screen.visible { opacity: 1; transform: translateY(0); }
+
+    .hidden-message {
+      max-width: 500px;
+      padding: 34px;
+      text-align: center;
+      opacity: 1;
+      transition: opacity 250ms ease;
+    }
+
+    .hidden-message.faded { opacity: 0; }
+
+    .hidden-message strong {
+      display: block;
+      font-size: clamp(1.7rem, 4vw, 3rem);
+      line-height: 1.08;
+    }
+
+    .hidden-message span {
+      display: block;
+      margin-top: 10px;
+      color: #cbd5e1;
+      font-size: clamp(1rem, 2vw, 1.22rem);
+    }
+
+    .privacy-screen.shuffling {
+      animation: hiddenShuffle 170ms ease-in-out infinite alternate;
+    }
+
+    @keyframes hiddenShuffle {
+      from { transform: translateY(0) translateX(-4px); }
+      to { transform: translateY(0) translateX(4px); }
+    }
+
+    .coin-wrap {
+      position: absolute;
+      z-index: 12;
+      top: 155px;
+      left: 50%;
+      width: 104px;
+      height: 104px;
+      opacity: 0;
+      transform: translate(-50%, 75px) scale(.7);
+      perspective: 700px;
+      pointer-events: none;
+    }
+
+    .coin-wrap.active { animation: coinArc 1.65s cubic-bezier(.22,.7,.18,1) forwards; }
+
+    .coin {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      transform-style: preserve-3d;
+    }
+
+    .coin-wrap.active .coin { animation: coinFlip 1.65s linear forwards; }
+
+    .coin-face {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      border: 6px solid #d69628;
+      border-radius: 50%;
+      color: #754a0b;
+      background: radial-gradient(circle at 34% 30%, #ffe69a, var(--gold) 58%, #c9831f);
+      box-shadow: inset -11px -13px 19px rgba(117,74,11,0.22), 0 15px 22px rgba(21,39,59,0.2);
+      backface-visibility: hidden;
+      font-size: 2.1rem;
+      font-weight: 900;
+    }
+
+    .coin-back { transform: rotateY(180deg); }
+
+    @keyframes coinArc {
+      0% { opacity: 0; transform: translate(-50%, 75px) scale(.7); }
+      12% { opacity: 1; }
+      50% { opacity: 1; transform: translate(-50%, -78px) scale(1.08); }
+      76% { opacity: 1; }
+      100% { opacity: 0; transform: translate(-50%, 78px) scale(.72); }
+    }
+
+    @keyframes coinFlip {
+      from { transform: rotateY(0) rotateZ(-6deg); }
+      to { transform: rotateY(2160deg) rotateZ(8deg); }
+    }
+
+    .observed-ball {
+      position: absolute;
+      z-index: 17;
+      left: 50%;
+      bottom: 66px;
+      width: 92px;
+      height: 92px;
+      border-radius: 50%;
+      border: 5px solid rgba(255,255,255,0.92);
+      box-shadow: inset -14px -16px 20px rgba(0,0,0,0.18), 0 17px 29px rgba(0,0,0,0.28);
+      opacity: 0;
+      transform: translate(-50%, 130px) scale(.55);
+    }
+
+    .observed-ball.red-result { background: radial-gradient(circle at 34% 28%, #fb7474, var(--red) 55%, var(--red-dark)); }
+    .observed-ball.green-result { background: radial-gradient(circle at 34% 28%, #63cc91, var(--green) 55%, var(--green-dark)); }
+
+    .observed-ball::after {
+      content: "";
+      position: absolute;
+      top: 16px;
+      left: 21px;
+      width: 23px;
+      height: 15px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.57);
+      transform: rotate(-28deg);
+    }
+
+    .observed-ball.visible { animation: revealBall 760ms cubic-bezier(.18,.8,.22,1.2) forwards; }
+
+    @keyframes revealBall {
+      0% { opacity: 0; transform: translate(-50%, 130px) scale(.55) rotate(-18deg); }
+      72% { opacity: 1; transform: translate(-50%, -10px) scale(1.08) rotate(5deg); }
+      100% { opacity: 1; transform: translate(-50%, 0) scale(1) rotate(0); }
+    }
+
+    .observation-label {
+      position: absolute;
+      z-index: 17;
+      left: 50%;
+      bottom: 28px;
+      color: #fff;
+      font-size: 1.12rem;
+      font-weight: 800;
+      opacity: 0;
+      transform: translateX(-50%);
+      transition: opacity 300ms ease;
+    }
+
+    .observation-label.visible { opacity: 1; }
+
+    .posterior-panel {
+      position: absolute;
+      z-index: 17;
+      top: 178px;
+      left: 50%;
+      width: min(520px, calc(100% - 70px));
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+      opacity: 0;
+      transform: translate(-50%, 18px) scale(.96);
+      transition: opacity 280ms ease, transform 350ms cubic-bezier(.2,.75,.2,1);
+      pointer-events: none;
+    }
+
+    .posterior-panel.visible {
+      opacity: 1;
+      transform: translate(-50%, 0) scale(1);
+    }
+
+    .posterior-card {
+      padding: 17px 18px;
+      border: 1px solid rgba(255,255,255,0.30);
+      border-radius: 17px;
+      color: var(--ink);
+      background: rgba(255,255,255,0.96);
+      box-shadow: 0 13px 27px rgba(0,0,0,0.20);
+      text-align: center;
+    }
+
+    .posterior-card span {
+      display: block;
+      color: var(--muted);
+      font-size: 0.95rem;
+      font-weight: 750;
+    }
+
+    .posterior-card strong {
+      display: block;
+      margin-top: 4px;
+      font-size: clamp(1.55rem, 3vw, 2.2rem);
+      line-height: 1;
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 12px;
+    }
+
+    .button {
+      min-height: 52px;
+      padding: 12px 22px;
+      border: 0;
+      border-radius: 14px;
+      cursor: pointer;
+      font-weight: 800;
+      transition: transform 150ms ease, box-shadow 150ms ease, opacity 150ms ease;
+    }
+
+    .button:hover:not(:disabled) { transform: translateY(-2px); }
+    .button:disabled { cursor: default; opacity: 0.48; }
+    .primary { color: #fff; background: var(--ink); box-shadow: 0 10px 22px rgba(21,39,59,0.22); }
+    .secondary { color: var(--ink); background: #fff; border: 1px solid var(--line); }
+    .answer { color: #fff; background: var(--green-dark); box-shadow: 0 10px 22px rgba(24,118,74,0.2); }
+    .hidden { display: none !important; }
+
+    .tree-section {
+      margin-top: 24px;
+      padding: clamp(22px, 4vw, 38px);
+      border: 1px solid rgba(148,163,184,0.55);
+      border-radius: 28px;
+      background: rgba(255,255,255,0.94);
+      box-shadow: var(--shadow);
+    }
+
+    .tree-heading h2 {
+      margin: 0;
+      font-size: clamp(1.7rem, 3.2vw, 2.45rem);
+      letter-spacing: -0.035em;
+    }
+
+    .tree-heading p {
+      margin: 8px 0 0;
+      color: var(--muted);
+      font-size: 1rem;
+      line-height: 1.5;
+    }
+
+    .tree-scroll {
+      margin-top: 24px;
+      overflow-x: auto;
+      overscroll-behavior-inline: contain;
+      scrollbar-color: #94a3b8 transparent;
+    }
+
+    .tree-diagram {
+      display: block;
+      width: 1100px;
+      height: 520px;
+      margin: 0 auto;
+      font-family: inherit;
+    }
+
+    .tree-diagram .stage-title {
+      fill: var(--muted);
+      font-size: 18px;
+      font-weight: 800;
+      letter-spacing: .02em;
+    }
+
+    .tree-diagram .root-line,
+    .tree-diagram .outcome-line {
+      fill: none;
+      stroke: #8b9aad;
+      stroke-width: 5;
+      stroke-linecap: round;
+    }
+
+    .tree-diagram .outcome-line.red-line { stroke: var(--red); }
+    .tree-diagram .outcome-line.green-line { stroke: var(--green); }
+
+    .tree-diagram .node-circle {
+      fill: #fff;
+      stroke: var(--ink);
+      stroke-width: 4;
+    }
+
+    .tree-diagram .node-letter {
+      fill: var(--ink);
+      font-size: 24px;
+      font-weight: 900;
+      text-anchor: middle;
+      dominant-baseline: middle;
+    }
+
+    .tree-diagram .branch-label {
+      fill: var(--ink);
+      font-size: 17px;
+      font-weight: 800;
+    }
+
+    .tree-diagram .leaf-box,
+    .tree-diagram .marginal-box {
+      fill: #fff;
+      stroke: var(--line);
+      stroke-width: 2;
+      rx: 14;
+    }
+
+    .tree-diagram .leaf-title {
+      fill: var(--ink);
+      font-size: 21px;
+      font-weight: 900;
+    }
+
+    .tree-diagram .leaf-value {
+      fill: var(--muted);
+      font-size: 17px;
+      font-weight: 750;
+    }
+
+    .tree-diagram .marginal-title {
+      fill: var(--ink);
+      font-size: 19px;
+      font-weight: 900;
+    }
+
+    .tree-diagram .marginal-value {
+      fill: var(--muted);
+      font-size: 16px;
+      font-weight: 750;
+    }
+
+    .tree-diagram .colour-dot { stroke: rgba(255,255,255,0.9); stroke-width: 3; }
+    .tree-diagram .tree-red,
+    .tree-diagram .tree-green { transition: opacity 300ms ease; }
+    .tree-diagram.focus-red .tree-green { opacity: .24; }
+    .tree-diagram.focus-green .tree-red { opacity: .24; }
+    .tree-diagram.focus-red .tree-red .outcome-line,
+    .tree-diagram.focus-green .tree-green .outcome-line { stroke-width: 8; }
+
+    footer {
+      color: var(--muted);
+      text-align: center;
+      font-size: 0.88rem;
+      font-weight: 650;
+    }
+
+    @media (max-width: 720px) {
+      .page { width: min(100% - 20px, 680px); padding-top: 16px; }
+      header { gap: 10px; }
+      .icon-button { padding: 0 10px; }
+      .stage { min-height: 720px; border-radius: 22px; }
+      .buckets { inset: 108px 16px 30px; grid-template-columns: 1fr; gap: 10px; align-items: center; }
+      .bucket-card { height: 270px; grid-template-columns: 100px 1fr; grid-template-rows: 1fr; align-items: center; }
+      .bucket-label { margin: 0; text-align: center; }
+      .probability-tags { top: 8px; left: 104px; right: auto; flex-direction: column; align-items: flex-start; gap: 5px; }
+      .probability-tag { padding: 5px 7px; font-size: 0.72rem; }
+      .bucket { width: 205px; height: 170px; }
+      .balls { width: 154px; height: 111px; bottom: 15px; }
+      .ball { width: 44px; height: 44px; }
+      .p1 { left: 5px; bottom: 5px; }
+      .p2 { left: 53px; bottom: 1px; }
+      .p3 { left: 102px; bottom: 6px; }
+      .p4 { left: 30px; bottom: 46px; }
+      .p5 { left: 80px; bottom: 48px; }
+      .privacy-screen { inset: 92px 12px 17px; }
+      .coin-wrap { top: 270px; }
+      .posterior-panel { top: 260px; width: min(500px, calc(100% - 38px)); }
+      .posterior-card { padding: 14px 10px; }
+      .observed-ball { bottom: 94px; }
+      .observation-label { bottom: 53px; }
+      .tree-section { border-radius: 22px; padding: 22px 14px; }
+      .tree-scroll { margin-left: -2px; margin-right: -2px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: 1ms !important; animation-iteration-count: 1 !important; transition-duration: 1ms !important; scroll-behavior: auto !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header>
+      <div>
+        <h1>Bayes’ Rule: Hidden Bucket</h1>
+        <p class="intro">One bucket is selected at random, with an equal chance of selecting each bucket. The selected bucket remains hidden, and one ball is drawn from it.</p>
+      </div>
+      <button class="icon-button" id="fullscreenButton" type="button" aria-label="Enter full screen">Full screen</button>
+    </header>
+
+    <main>
+      <section class="stage" aria-live="polite" aria-labelledby="statusLine">
+        <div class="status">
+          <p class="status-line" id="statusLine">Examine the contents of both buckets.</p>
+          <div class="fair-choice" id="fairChoice">Each bucket has a 50% chance of selection</div>
+        </div>
+
+        <div class="buckets" id="buckets">
+          <article class="bucket-card" id="bucketA" aria-label="Bucket A contains four red balls and one green ball">
+            <h2 class="bucket-label">Bucket A<small>4 red, 1 green</small></h2>
+            <div class="probability-tags" aria-label="Conditional probabilities for Bucket A">
+              <span class="probability-tag red-tag">P(R | A) = 4/5 = 0.80</span>
+              <span class="probability-tag green-tag">P(G | A) = 1/5 = 0.20</span>
+            </div>
+            <div class="bucket" aria-hidden="true">
+              <div class="bucket-body"></div>
+              <div class="balls">
+                <span class="ball red p1"></span>
+                <span class="ball red p2"></span>
+                <span class="ball red p3"></span>
+                <span class="ball red p4"></span>
+                <span class="ball green p5"></span>
+              </div>
+              <div class="bucket-rim"></div>
+            </div>
+          </article>
+
+          <article class="bucket-card" id="bucketB" aria-label="Bucket B contains two red balls and three green balls">
+            <h2 class="bucket-label">Bucket B<small>2 red, 3 green</small></h2>
+            <div class="probability-tags" aria-label="Conditional probabilities for Bucket B">
+              <span class="probability-tag red-tag">P(R | B) = 2/5 = 0.40</span>
+              <span class="probability-tag green-tag">P(G | B) = 3/5 = 0.60</span>
+            </div>
+            <div class="bucket" aria-hidden="true">
+              <div class="bucket-body"></div>
+              <div class="balls">
+                <span class="ball red p1"></span>
+                <span class="ball green p2"></span>
+                <span class="ball green p3"></span>
+                <span class="ball red p4"></span>
+                <span class="ball green p5"></span>
+              </div>
+              <div class="bucket-rim"></div>
+            </div>
+          </article>
+        </div>
+
+        <div class="coin-wrap" id="coinWrap" aria-hidden="true">
+          <div class="coin">
+            <div class="coin-face">A</div>
+            <div class="coin-face coin-back">B</div>
+          </div>
+        </div>
+
+        <div class="privacy-screen" id="privacyScreen" aria-hidden="true">
+          <div class="hidden-message" id="hiddenMessage">
+            <strong>Selection hidden</strong>
+            <span>The coin lands behind the cover, so the selected bucket remains unknown.</span>
+          </div>
+        </div>
+
+        <div class="observed-ball" id="observedBall" aria-hidden="true"></div>
+        <div class="observation-label" id="observationLabel"></div>
+
+        <div class="posterior-panel" id="posteriorPanel" aria-label="Posterior probabilities">
+          <div class="posterior-card">
+            <span id="posteriorLabelA">P(A | R)</span>
+            <strong id="posteriorA">66.67%</strong>
+          </div>
+          <div class="posterior-card">
+            <span id="posteriorLabelB">P(B | R)</span>
+            <strong id="posteriorB">33.33%</strong>
+          </div>
+        </div>
+      </section>
+
+      <div class="controls" aria-label="Activity controls">
+        <button class="button primary" id="runButton" type="button">Flip coin and draw</button>
+        <button class="button answer hidden" id="answerButton" type="button">Show posterior probabilities</button>
+        <button class="button secondary hidden" id="resetButton" type="button">Reset</button>
+      </div>
+
+      <section class="tree-section" aria-labelledby="treeTitle">
+        <div class="tree-heading">
+          <h2 id="treeTitle">Probability Tree for the Experiment</h2>
+          <p>The first branches show the bucket probabilities, the second branches show the conditional colour probabilities, and the terminal boxes show the joint probabilities.</p>
+        </div>
+
+        <div class="tree-scroll" tabindex="0" aria-label="Scrollable probability tree">
+          <svg class="tree-diagram" id="treeDiagram" viewBox="0 0 1100 520" role="img" aria-labelledby="treeSvgTitle treeSvgDesc">
+            <title id="treeSvgTitle">Complete probability tree for the hidden bucket experiment</title>
+            <desc id="treeSvgDesc">Bucket A and Bucket B each have probability 0.50. Bucket A produces red with probability 0.80 and green with probability 0.20. Bucket B produces red with probability 0.40 and green with probability 0.60. The corresponding joint probabilities are 0.40, 0.10, 0.20, and 0.30. The marginal probabilities of red and green are 0.60 and 0.40.</desc>
+
+            <text class="stage-title" x="38" y="34">Start</text>
+            <text class="stage-title" x="192" y="34">Marginal / prior</text>
+            <text class="stage-title" x="430" y="34">Conditional</text>
+            <text class="stage-title" x="665" y="34">Joint</text>
+            <text class="stage-title" x="910" y="34">Outcome marginal</text>
+
+            <line class="root-line" x1="78" y1="260" x2="310" y2="140"></line>
+            <line class="root-line" x1="78" y1="260" x2="310" y2="380"></line>
+            <text class="branch-label" x="152" y="177">P(A) = 0.50</text>
+            <text class="branch-label" x="152" y="350">P(B) = 0.50</text>
+
+            <circle class="node-circle" cx="65" cy="260" r="18"></circle>
+            <circle class="node-circle" cx="325" cy="140" r="25"></circle>
+            <text class="node-letter" x="325" y="140">A</text>
+            <circle class="node-circle" cx="325" cy="380" r="25"></circle>
+            <text class="node-letter" x="325" y="380">B</text>
+
+            <g class="tree-red">
+              <line class="outcome-line red-line" x1="348" y1="130" x2="635" y2="78"></line>
+              <text class="branch-label" x="430" y="91">P(R | A) = 0.80</text>
+              <rect class="leaf-box" x="650" y="40" width="220" height="78"></rect>
+              <circle class="colour-dot" cx="673" cy="64" r="10" fill="#df4747"></circle>
+              <text class="leaf-title" x="692" y="70">A ∩ R</text>
+              <text class="leaf-value" x="673" y="98">0.50 × 0.80 = 0.40</text>
+            </g>
+
+            <g class="tree-green">
+              <line class="outcome-line green-line" x1="348" y1="150" x2="635" y2="202"></line>
+              <text class="branch-label" x="430" y="194">P(G | A) = 0.20</text>
+              <rect class="leaf-box" x="650" y="164" width="220" height="78"></rect>
+              <circle class="colour-dot" cx="673" cy="188" r="10" fill="#2a9d68"></circle>
+              <text class="leaf-title" x="692" y="194">A ∩ G</text>
+              <text class="leaf-value" x="673" y="222">0.50 × 0.20 = 0.10</text>
+            </g>
+
+            <g class="tree-red">
+              <line class="outcome-line red-line" x1="348" y1="370" x2="635" y2="318"></line>
+              <text class="branch-label" x="430" y="331">P(R | B) = 0.40</text>
+              <rect class="leaf-box" x="650" y="280" width="220" height="78"></rect>
+              <circle class="colour-dot" cx="673" cy="304" r="10" fill="#df4747"></circle>
+              <text class="leaf-title" x="692" y="310">B ∩ R</text>
+              <text class="leaf-value" x="673" y="338">0.50 × 0.40 = 0.20</text>
+            </g>
+
+            <g class="tree-green">
+              <line class="outcome-line green-line" x1="348" y1="390" x2="635" y2="442"></line>
+              <text class="branch-label" x="430" y="434">P(G | B) = 0.60</text>
+              <rect class="leaf-box" x="650" y="404" width="220" height="78"></rect>
+              <circle class="colour-dot" cx="673" cy="428" r="10" fill="#2a9d68"></circle>
+              <text class="leaf-title" x="692" y="434">B ∩ G</text>
+              <text class="leaf-value" x="673" y="462">0.50 × 0.60 = 0.30</text>
+            </g>
+
+            <g class="tree-red">
+              <rect class="marginal-box" x="900" y="120" width="185" height="105"></rect>
+              <circle class="colour-dot" cx="925" cy="148" r="11" fill="#df4747"></circle>
+              <text class="marginal-title" x="946" y="154">P(R) = 0.60</text>
+              <text class="marginal-value" x="925" y="186">0.40 + 0.20</text>
+            </g>
+
+            <g class="tree-green">
+              <rect class="marginal-box" x="900" y="296" width="185" height="105"></rect>
+              <circle class="colour-dot" cx="925" cy="324" r="11" fill="#2a9d68"></circle>
+              <text class="marginal-title" x="946" y="330">P(G) = 0.40</text>
+              <text class="marginal-value" x="925" y="362">0.10 + 0.30</text>
+            </g>
+          </svg>
+        </div>
+      </section>
+    </main>
+
+    <footer>ADM 2303 · Probability Trees and Bayes’ Rule</footer>
+  </div>
+
+  <script>
+    const runButton = document.getElementById('runButton');
+    const answerButton = document.getElementById('answerButton');
+    const resetButton = document.getElementById('resetButton');
+    const fullscreenButton = document.getElementById('fullscreenButton');
+    const statusLine = document.getElementById('statusLine');
+    const fairChoice = document.getElementById('fairChoice');
+    const buckets = document.getElementById('buckets');
+    const coinWrap = document.getElementById('coinWrap');
+    const privacyScreen = document.getElementById('privacyScreen');
+    const hiddenMessage = document.getElementById('hiddenMessage');
+    const observedBall = document.getElementById('observedBall');
+    const observationLabel = document.getElementById('observationLabel');
+    const posteriorPanel = document.getElementById('posteriorPanel');
+    const posteriorLabelA = document.getElementById('posteriorLabelA');
+    const posteriorLabelB = document.getElementById('posteriorLabelB');
+    const posteriorA = document.getElementById('posteriorA');
+    const posteriorB = document.getElementById('posteriorB');
+    const treeDiagram = document.getElementById('treeDiagram');
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    let timers = [];
+    let selectedBucket = null;
+    let observedColour = null;
+
+    function later(callback, delay) {
+      const timer = window.setTimeout(callback, reducedMotion ? 25 : delay);
+      timers.push(timer);
+    }
+
+    function clearTimers() {
+      timers.forEach(window.clearTimeout);
+      timers = [];
+    }
+
+    function setShuffleDirections() {
+      document.querySelectorAll('.ball').forEach((ball, index) => {
+        const x = Math.round(Math.random() * 30 - 15);
+        const y = Math.round(Math.random() * -30 - 5);
+        ball.style.setProperty('--x', `${x}px`);
+        ball.style.setProperty('--y', `${y}px`);
+        ball.style.setProperty('--delay', `${(index % 5) * -36}ms`);
+      });
+    }
+
+    function generateExperiment() {
+      selectedBucket = Math.random() < 0.5 ? 'A' : 'B';
+      const probabilityOfRed = selectedBucket === 'A' ? 0.80 : 0.40;
+      observedColour = Math.random() < probabilityOfRed ? 'R' : 'G';
+    }
+
+    function setObservedColour() {
+      const isRed = observedColour === 'R';
+      const colourName = isRed ? 'red' : 'green';
+
+      observedBall.classList.remove('red-result', 'green-result');
+      observedBall.classList.add(isRed ? 'red-result' : 'green-result');
+      observationLabel.textContent = `Observed ball: ${colourName}`;
+      statusLine.textContent = `A ${colourName} ball was drawn. What are the posterior probabilities for Bucket A and Bucket B?`;
+      fairChoice.textContent = isRed ? 'Find P(A given R) and P(B given R)' : 'Find P(A given G) and P(B given G)';
+
+      treeDiagram.classList.remove('focus-red', 'focus-green');
+      treeDiagram.classList.add(isRed ? 'focus-red' : 'focus-green');
+    }
+
+    function runDraw() {
+      clearTimers();
+      setShuffleDirections();
+      generateExperiment();
+      runButton.disabled = true;
+      answerButton.classList.add('hidden');
+      resetButton.classList.add('hidden');
+      posteriorPanel.classList.remove('visible');
+      observedBall.classList.remove('visible', 'red-result', 'green-result');
+      observationLabel.classList.remove('visible');
+      privacyScreen.classList.remove('visible', 'shuffling');
+      hiddenMessage.classList.remove('faded');
+      coinWrap.classList.remove('active');
+      treeDiagram.classList.remove('focus-red', 'focus-green');
+      void coinWrap.offsetWidth;
+
+      statusLine.textContent = 'The coin is selecting Bucket A or Bucket B with equal probability…';
+      fairChoice.textContent = 'The coin result will remain hidden';
+      coinWrap.classList.add('active');
+
+      later(() => {
+        privacyScreen.classList.add('visible');
+        statusLine.textContent = 'The coin is landing behind the cover…';
+      }, 820);
+
+      later(() => {
+        buckets.classList.add('mixing');
+        privacyScreen.classList.add('shuffling');
+        statusLine.textContent = 'The balls in the selected bucket are shuffling…';
+        fairChoice.textContent = 'The selected bucket remains hidden';
+      }, 1450);
+
+      later(() => {
+        buckets.classList.remove('mixing');
+        privacyScreen.classList.remove('shuffling');
+        hiddenMessage.classList.add('faded');
+        setObservedColour();
+        observedBall.classList.add('visible');
+        observationLabel.classList.add('visible');
+      }, 2850);
+
+      later(() => {
+        answerButton.classList.remove('hidden');
+        resetButton.classList.remove('hidden');
+      }, 3550);
+    }
+
+    function revealAnswer() {
+      if (observedColour === 'R') {
+        posteriorLabelA.textContent = 'P(A | R)';
+        posteriorLabelB.textContent = 'P(B | R)';
+        posteriorA.textContent = '66.67%';
+        posteriorB.textContent = '33.33%';
+        statusLine.textContent = 'Posterior probabilities after observing a red ball';
+      } else {
+        posteriorLabelA.textContent = 'P(A | G)';
+        posteriorLabelB.textContent = 'P(B | G)';
+        posteriorA.textContent = '25.00%';
+        posteriorB.textContent = '75.00%';
+        statusLine.textContent = 'Posterior probabilities after observing a green ball';
+      }
+
+      fairChoice.textContent = 'The bucket remains hidden; the observation updates its probabilities';
+      posteriorPanel.classList.add('visible');
+      answerButton.classList.add('hidden');
+    }
+
+    function resetActivity() {
+      clearTimers();
+      buckets.classList.remove('mixing');
+      privacyScreen.classList.remove('visible', 'shuffling');
+      hiddenMessage.classList.remove('faded');
+      coinWrap.classList.remove('active');
+      observedBall.classList.remove('visible', 'red-result', 'green-result');
+      observationLabel.classList.remove('visible');
+      observationLabel.textContent = '';
+      posteriorPanel.classList.remove('visible');
+      treeDiagram.classList.remove('focus-red', 'focus-green');
+      selectedBucket = null;
+      observedColour = null;
+      statusLine.textContent = 'Examine the contents of both buckets.';
+      fairChoice.textContent = 'Each bucket has a 50% chance of selection';
+      runButton.disabled = false;
+      answerButton.classList.add('hidden');
+      resetButton.classList.add('hidden');
+    }
+
+    async function toggleFullscreen() {
+      try {
+        if (!document.fullscreenElement) {
+          await document.documentElement.requestFullscreen();
+        } else {
+          await document.exitFullscreen();
+        }
+      } catch (_) {
+        fullscreenButton.textContent = 'Full screen unavailable';
+      }
+    }
+
+    document.addEventListener('fullscreenchange', () => {
+      const active = Boolean(document.fullscreenElement);
+      fullscreenButton.textContent = active ? 'Exit full screen' : 'Full screen';
+      fullscreenButton.setAttribute('aria-label', active ? 'Exit full screen' : 'Enter full screen');
+    });
+
+    runButton.addEventListener('click', runDraw);
+    answerButton.addEventListener('click', revealAnswer);
+    resetButton.addEventListener('click', resetActivity);
+    fullscreenButton.addEventListener('click', toggleFullscreen);
+
+    document.addEventListener('keydown', (event) => {
+      if (event.key === ' ' && !runButton.disabled) {
+        event.preventDefault();
+        runDraw();
+      }
+      if (event.key.toLowerCase() === 'r') resetActivity();
+    });
+  </script>
+</body>
+</html>
